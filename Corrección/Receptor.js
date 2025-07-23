@@ -3,10 +3,42 @@ function calcularParidad(hammingCode, pos) {
     let paridad = 0;
     for (let i = 0; i < hammingCode.length; i++) {
         if ((i + 1) & pos) {  // Comprobamos si la posición i + 1 tiene un bit de paridad
-            paridad ^= parseInt(hammingCode.charAt(i));  // XOR para obtener la paridad
+            paridad ^= parseInt(hammingCode.charAt(i));  // charAt ahora funciona si hammingCode es una cadena
         }
     }
     return paridad;
+}
+
+// Método para generar el código Hamming
+function generarCodigoHamming(datos) {
+    datos = datos.split('');
+    
+    // Calcular la cantidad de bits de paridad necesarios
+    let n = datos.length;
+    let m = 0;
+    while (Math.pow(2, m) < (n + m + 1)) {
+        m++;
+    }
+    
+    // Inserta los bits de paridad
+    let hammingCode = new Array(n + m).fill('');
+    let j = 0;
+    for (let i = 1; i <= n + m; i++) {
+        if ((i & (i - 1)) === 0) {  // Si es una posición de bit de paridad
+            hammingCode[i - 1] = '0';
+        } else {
+            hammingCode[i - 1] = datos[j++];
+        }
+    }
+    
+    // Asignar los valores a los bits de paridad
+    for (let i = 0; i < m; i++) {
+        let paridadPos = Math.pow(2, i);
+        let paridadBit = calcularParidad(hammingCode.join(''), paridadPos);  // Cambié aquí para que sea una cadena
+        hammingCode[paridadPos - 1] = paridadBit;
+    }
+
+    return hammingCode.join('');  // Devolvemos como una cadena
 }
 
 // Método para verificar y corregir el código Hamming
@@ -25,18 +57,12 @@ function corregirHamming(hammingCode) {
 
     // Si se detecta un error, corregir el bit erróneo
     if (errorPos > 0) {
-        console.log("Error en el bit: " + errorPos);
         let arr = hammingCode.split('');  // Convertimos la cadena en un arreglo para modificar un carácter
         arr[errorPos - 1] = (arr[errorPos - 1] === '0') ? '1' : '0';  // Corregimos el bit
         hammingCode = arr.join('');  // Convertimos el arreglo nuevamente en una cadena
-    } else {
-        console.log("No se detectaron errores.");
     }
 
     return hammingCode;
 }
 
-// Ejemplo de uso
-let hammingCode = "1011011001";  // Suponiendo que esta es la entrada con el código Hamming recibido
-let codigoCorregido = corregirHamming(hammingCode);
-console.log("Código corregido: " + codigoCorregido);
+module.exports = { generarCodigoHamming, corregirHamming };  // Exportar las funciones
