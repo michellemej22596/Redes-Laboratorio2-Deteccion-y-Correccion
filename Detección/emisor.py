@@ -27,5 +27,6 @@ def crc32_emisor(datos):
 # Ejemplo de uso
 mensaje = "Hola, este es un mensaje de prueba"
 crc_enviado = crc32_emisor(mensaje)
+
 print(f"Mensaje original: {mensaje}")
 print(f"CRC-32 calculado por el emisor (en binario): {crc_enviado}")
