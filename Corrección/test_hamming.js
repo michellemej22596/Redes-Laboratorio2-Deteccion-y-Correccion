@@ -1,5 +1,6 @@
 const assert = require('assert');
-const { generarCodigoHamming, corregirHamming } = require('./Receptor');  // Importar las funciones
+const { generarCodigoHamming, corregirHamming, modificarBits, verificarYCorregir } = require('./Receptor');  // Importa correctamente
+
 
 // Test sin errores
 describe('Pruebas Hamming', function() {
