@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detección y Corrección de Errores</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>CRC-32 & Hamming - Detección y Corrección de Errores</h1>
+    <div>
+      <label for="message">Mensaje a enviar:</label>
+      <input type="text" id="message" placeholder="Introduce tu mensaje aquí">
+    </div>
+    <div>
+      <label for="algorithm">Selecciona el algoritmo:</label>
+      <select id="algorithm">
+        <option value="crc32">CRC-32</option>
+        <option value="hamming">Hamming</option>
+      </select>
+    </div>
+    <div>
+      <button id="sendButton">Enviar Mensaje</button>
+    </div>
+    <div id="result">
+      <p id="status"></p>
+    </div>
+  </div>
+
+  <script src="js/gui.js"></script>
+  <script src="js/socket-gui.js"></script>
+</body>
+</html>

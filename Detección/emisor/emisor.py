@@ -1,32 +1,21 @@
-def crc32_emisor(datos):
-    # Tabla de CRC-32 generada previamente
-    CRC32_TABLE = [0] * 256
-    polynomial = 0xEDB88320
+import socket
+from crc32 import crc32_emisor  # Importa la función CRC-32 del archivo crc32.py
 
-    # Rellenamos la tabla CRC-32
-    for i in range(256):
-        crc = i
-        for j in range(8):
-            if crc & 1:
-                crc = (crc >> 1) ^ polynomial
-            else:
-                crc >>= 1
-        CRC32_TABLE[i] = crc
-
-    # Calculamos el CRC-32 del mensaje
-    crc = 0xFFFFFFFF
-    for byte in datos.encode('utf-8'):
-        crc = (crc >> 8) ^ CRC32_TABLE[(crc ^ byte) & 0xFF]
-
-    crc = crc ^ 0xFFFFFFFF
-
-    # Convertimos el CRC a una cadena binaria de 32 bits
-    crc_bin = format(crc, '032b')
-    return crc_bin
-
-# Ejemplo de uso
+# Datos del mensaje
 mensaje = "Hola, este es un mensaje de prueba"
-crc_enviado = crc32_emisor(mensaje)
+crc_calculado = crc32_emisor(mensaje)  # Calcula el CRC del mensaje
 
-print(f"Mensaje original: {mensaje}")
-print(f"CRC-32 calculado por el emisor (en binario): {crc_enviado}")
+HOST = "127.0.0.1"  # IP de destino (localhost)
+PORT = 65432  # Puerto donde se escuchará la conexión
+
+# Crea el socket y lo conecta al receptor
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.connect((HOST, PORT))  # Conecta al receptor
+
+    # Envía el mensaje y el CRC al receptor
+    mensaje_con_crc = f"{mensaje}::{crc_calculado}"
+    s.sendall(mensaje_con_crc.encode())  # Envía el mensaje como bytes
+
+    # Recibe la respuesta del receptor (si la hay)
+    data = s.recv(1024)
+    print(f"Recibido: {data.decode()}")
