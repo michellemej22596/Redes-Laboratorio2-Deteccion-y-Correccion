@@ -12,8 +12,9 @@ document.getElementById('sendButton').addEventListener('click', function() {
 });
 
 function sendToSocket(message, algorithm) {
-  // Aquí se manejará la comunicación con los sockets (emisor-receptor)
+  // Establece la comunicación con el servidor (emisor)
   console.log(`Enviando mensaje: "${message}" usando el algoritmo: ${algorithm}`);
+
   // Llama a socket-gui.js para la comunicación
   sendMessageToReceiver(message, algorithm);
 }

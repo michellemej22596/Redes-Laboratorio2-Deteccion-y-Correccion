@@ -1,38 +1,49 @@
 // receptor.js
+const net = require('net');  // Requiere el módulo net para usar sockets
+const { crc32_receptor } = require('./crc32');  // Importa la función para calcular CRC-32
 
-function crc32_receptor(datos, crcRecibido) {
-    const CRC32_TABLE = new Array(256).fill(0);
-    const polynomial = 0xEDB88320;
+const HOST = '127.0.0.1';  // Dirección IP (localhost)
+const PORT = 65432;        // Puerto donde el emisor enviará los datos
 
-    for (let i = 0; i < 256; i++) {
-        let crc = i;
-        for (let j = 0; j < 8; j++) {
-            if (crc & 1) {
-                crc = (crc >>> 1) ^ polynomial;
-            } else {
-                crc >>>= 1;
-            }
+// Crear el servidor de socket
+const server = net.createServer((socket) => {
+    console.log('Cliente conectado');
+
+    // Evento para recibir los datos del cliente
+    socket.on('data', (data) => {
+        console.log('Datos recibidos del emisor');
+
+        // Recibimos los datos enviados por el emisor (mensaje y CRC)
+        let mensajeRecibido = data.toString(); // Convertimos los datos a cadena
+        let [mensaje, crcRecibido] = mensajeRecibido.split('::'); // Dividimos el mensaje y CRC
+
+        console.log(`Mensaje recibido: ${mensaje}`);
+        console.log(`CRC recibido: ${crcRecibido}`);
+         // Calculamos el CRC del mensaje recibido
+        const crcCalculado = crc32_receptor(mensaje);
+
+        // Verificamos si el CRC calculado coincide con el CRC recibido
+        if (crcCalculado === crcRecibido) {
+            console.log('La integridad del mensaje es válida.');
+            socket.write('La integridad del mensaje es válida.\n');
+        } else {
+            console.log('El mensaje ha sido corrompido.');
+            socket.write('El mensaje ha sido corrompido.\n');
         }
-        CRC32_TABLE[i] = crc;
-    }
+    });
 
-    let crc = 0xFFFFFFFF;
-    for (let i = 0; i < datos.length; i++) {
-        const byte = datos.charCodeAt(i);
-        crc = (crc >>> 8) ^ CRC32_TABLE[(crc ^ byte) & 0xFF];
-    }
-    crc ^= 0xFFFFFFFF;
+    // Evento para manejar errores
+    socket.on('error', (err) => {
+        console.log(`Error en la conexión: ${err.message}`);
+    });
 
-    const crcBin = (crc >>> 0).toString(2).padStart(32, '0');
+    // Evento cuando la conexión se cierra
+    socket.on('end', () => {
+        console.log('Cliente desconectado');
+    });
+});
 
-    if (crcBin === crcRecibido) {
-        console.log("La integridad del mensaje es válida.");
-    } else {
-        console.log("El mensaje ha sido corrompido.");
-    }
-}
-
-// Exportamos la función
-module.exports = {
-    crc32_receptor
-};
+// El servidor escucha en el puerto especificado
+server.listen(PORT, HOST, () => {
+    console.log(`Servidor de receptor escuchando en ${HOST}:${PORT}`);
+});
