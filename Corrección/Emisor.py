@@ -1,7 +1,11 @@
+import socket
+import random
+
+# Función para convertir texto a binario
+def convertir_a_binario(mensaje):
+    return ''.join(format(ord(c), '08b') for c in mensaje)
+
 def hamming_encode(data):
-    """
-    Codifica los datos utilizando el código Hamming.
-    """
     data_len = len(data)
     r = 0
     while (2**r) < (data_len + r + 1):
@@ -11,7 +15,6 @@ def hamming_encode(data):
     j = 0
     for i in range(1, len(encoded_data) + 1):
         if (i & (i - 1)) == 0:
-            # Es potencia de 2, es un bit de paridad
             continue
         else:
             encoded_data[i-1] = int(data[j])
@@ -27,78 +30,76 @@ def hamming_encode(data):
 
     return "".join(map(str, encoded_data))
 
-def hamming_decode(encoded_data):
-    """
-    Decodifica los datos codificados con Hamming, detecta errores y corrige uno si es posible.
-    Si hay más de un error, descarta el mensaje y notifica al usuario.
-    """
-    encoded_data = list(map(int, list(encoded_data)))  # Convertimos a lista de enteros
-    r = 0  # Número de bits de paridad
-    data_len = len(encoded_data)  # Longitud del mensaje codificado
+# Clase que maneja el enlace (Integridad)
+class EmisorEnlace:
+    def calcular_integridad(self, mensaje):
+        return hamming_encode(mensaje)  # Usando la misma función de Hamming
 
-    # Calcular el número de bits de paridad
-    while (2**r) < data_len:
-        r += 1
+class EmisorRuido:
+    def aplicar_ruido(self, mensaje_codificado, errores_maximos=1):
+        """Introduce un número limitado de errores (bits volteados aleatoriamente)."""
+        mensaje_list = list(mensaje_codificado)
+        if errores_maximos > 0:
+            indices = random.sample(range(len(mensaje_list)), min(errores_maximos, len(mensaje_list)))
+            for i in indices:
+                mensaje_list[i] = '1' if mensaje_list[i] == '0' else '0'
+        return ''.join(mensaje_list)
 
-    error_bit_pos = 0  # Posición del bit con error
-    errors_detected = 0  # Contador de errores detectados
-
-    # Verificación de los bits de paridad para detectar errores
-    for parity_bit in range(r):
-        parity_index = 2**parity_bit
-        parity_value = 0
-        for i in range(1, data_len + 1):
-            if (i >> parity_bit) & 1:
-                parity_value ^= encoded_data[i-1]  # Comprobamos la paridad
-        if parity_value != 0:
-            error_bit_pos += parity_index  # Sumamos la posición de error
-            errors_detected += 1  # Aumentamos el contador de errores detectados
-
-    # Si más de un error se detecta, descartar el mensaje
-    if errors_detected > 1:
-        print(f"Se detectaron más de un error. El mensaje no se puede corregir.")
-        return None  # Devuelve None o un valor que indique que no se puede corregir
+# Clase que maneja la aplicación del Emisor
+class EmisorAplicacion:
+    def __init__(self):
+        self.mensaje = ""
     
-    # Si hay un error, lo corregimos
-    if error_bit_pos != 0:
-        encoded_data[error_bit_pos-1] ^= 1  # Corregir el bit en la posición de error
-        print(f"Error detectado y corregido en la posición: {error_bit_pos}")
+    def solicitar_mensaje(self):
+        """Solicita el mensaje a enviar."""
+        self.mensaje = input("Ingrese el mensaje a enviar: ")
+    
+    def mostrar_mensaje(self):
+        """Muestra el mensaje final después de ser codificado y con posibles errores."""
+        print("Mensaje original:", self.mensaje)
 
-    # Recuperar los datos decodificados eliminando los bits de paridad
-    decoded_data = ""
-    for i in range(1, data_len + 1):
-        if (i & (i-1)) != 0:  # Solo recoger los bits de datos (que no son de paridad)
-            decoded_data += str(encoded_data[i-1])
+class EmisorPresentacion:
+    def codificar_mensaje(self, mensaje):
+        """Codifica el mensaje en binario con Hamming por bloques de 4 bits."""
+        mensaje_binario = convertir_a_binario(mensaje)
+        
+        # Padding si no múltiplo de 4
+        while len(mensaje_binario) % 4 != 0:
+            mensaje_binario += '0'
+        
+        bloques = [mensaje_binario[i:i+4] for i in range(0, len(mensaje_binario), 4)]
+        bloques_codificados = [hamming_encode(bloque) for bloque in bloques]
+        
+        return ''.join(bloques_codificados)
 
-    return decoded_data
+# Ejemplo de ejecución del Emisor con Socket
+def emisor_socket(mensaje):
+    # Codificación del mensaje
+    presentacion = EmisorPresentacion()
+    mensaje_codificado = presentacion.codificar_mensaje(mensaje)
+    print("Mensaje codificado:", mensaje_codificado)
+    
+    # Aplicar ruido con solo 1 bit de error
+    ruido = EmisorRuido()
+    mensaje_con_ruido = ruido.aplicar_ruido(mensaje_codificado, errores_maximos=1)
 
-# Ejemplo de uso con tres mensajes diferentes
-mensajes = ["1011001", "11011011", "1111001001"]
-for mensaje in mensajes:
-    encoded_data = hamming_encode(mensaje)
-    print(f"Datos originales: {mensaje}")
-    print(f"Datos codificados con Hamming: {encoded_data}")
+    
+    # Mostrar el mensaje final
+    print("Mensaje final con ruido:", mensaje_con_ruido)
+    
+    # Conectar al servidor (receptor) utilizando un socket
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect(("localhost", 12345))  # Cambia el puerto si es necesario
+    
+    # Enviar el mensaje codificado con ruido al receptor
+    client_socket.send(mensaje_con_ruido.encode("utf-8"))
+    
+    # Cerrar la conexión
+    client_socket.close()
 
-    # Simulando un error
-    error_index = 3
-    modified_data = list(encoded_data)
-    modified_data[error_index] = '1' if modified_data[error_index] == '0' else '0'
-    modified_data = "".join(modified_data)
-    print(f"Datos con error simulado: {modified_data}")
-    decoded_data = hamming_decode(modified_data)
-    print(f"Datos decodificados: {decoded_data}")
-
-    # Simulando dos errores
-    codigo_con_dos_errores = list(encoded_data)
-    codigo_con_dos_errores[3] = '1' if codigo_con_dos_errores[3] == '0' else '0'  # Cambiar el primer bit
-    codigo_con_dos_errores[5] = '1' if codigo_con_dos_errores[5] == '0' else '0'  # Cambiar el segundo bit
-    codigo_con_dos_errores = ''.join(codigo_con_dos_errores)
-    print(f"Datos con dos errores: {codigo_con_dos_errores}")
-    decoded_data = hamming_decode(codigo_con_dos_errores)
-    if decoded_data is None:
-        print("El mensaje con dos errores no pudo ser corregido.")
-    else:
-        print(f"Datos decodificados (con dos errores corregidos): {decoded_data}")
-
-    # Decodificando sin error
-    print(f"Datos decodificados sin error: {hamming_decode(encoded_data)}")
+if __name__ == "__main__":
+    emisor = EmisorAplicacion()
+    emisor.solicitar_mensaje()  # Solicita al usuario ingresar el mensaje.
+    
+    # Llamada a la función que maneja la transmisión con socket
+    emisor_socket(emisor.mensaje)
