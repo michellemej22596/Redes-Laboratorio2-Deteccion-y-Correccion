@@ -1,4 +1,4 @@
-from emisor import crc32_emisor
+from Detección.emisor.emisor import crc32_emisor
 
 def probar_emisor():
     # Tres cadenas de prueba

@@ -1,4 +1,4 @@
-const { crc32_receptor } = require('./receptor');
+const { crc32_receptor } = require('./receptor/receptor');
 
 // Cadenas de prueba y CRCs generados por el emisor
 const crcEmisor1 = "11001101001100110100000100001011"; // "Hola, este es un mensaje de prueba"
