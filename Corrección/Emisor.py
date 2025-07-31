@@ -60,17 +60,17 @@ class EmisorAplicacion:
 
 class EmisorPresentacion:
     def codificar_mensaje(self, mensaje):
-        """Codifica el mensaje en binario con Hamming por bloques de 4 bits."""
+        """Codifica el mensaje en binario con Hamming para la longitud completa del mensaje."""
         mensaje_binario = convertir_a_binario(mensaje)
         
-        # Padding si no múltiplo de 4
-        while len(mensaje_binario) % 4 != 0:
+        # Padding si no es múltiplo de 8
+        while len(mensaje_binario) % 8 != 0:
             mensaje_binario += '0'
         
-        bloques = [mensaje_binario[i:i+4] for i in range(0, len(mensaje_binario), 4)]
-        bloques_codificados = [hamming_encode(bloque) for bloque in bloques]
+        # Aplicamos Hamming a la cadena completa
+        mensaje_codificado = hamming_encode(mensaje_binario)
         
-        return ''.join(bloques_codificados)
+        return mensaje_codificado
 
 # Ejemplo de ejecución del Emisor con Socket
 def emisor_socket(mensaje):
@@ -83,8 +83,7 @@ def emisor_socket(mensaje):
     ruido = EmisorRuido()
     mensaje_con_ruido = ruido.aplicar_ruido(mensaje_codificado, errores_maximos=1)
 
-    
-    # Mostrar el mensaje final
+    # Mostrar el mensaje final con ruido
     print("Mensaje final con ruido:", mensaje_con_ruido)
     
     # Conectar al servidor (receptor) utilizando un socket
@@ -93,8 +92,12 @@ def emisor_socket(mensaje):
     
     # Enviar el mensaje codificado con ruido al receptor
     client_socket.send(mensaje_con_ruido.encode("utf-8"))
+
+    # Esperar la respuesta del servidor antes de cerrar la conexión
+    respuesta = client_socket.recv(1024).decode("utf-8")  # Esperar respuesta del servidor
+    print("Respuesta recibida del servidor:", respuesta)
     
-    # Cerrar la conexión
+    # Cerrar la conexión después de recibir la respuesta
     client_socket.close()
 
 if __name__ == "__main__":

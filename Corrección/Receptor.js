@@ -1,4 +1,6 @@
-// Método para calcular la paridad
+const net = require('net');
+
+// Función para calcular la paridad
 function calcularParidad(hammingCode, pos) {
     let paridad = 0;
     for (let i = 0; i < hammingCode.length; i++) {
@@ -9,144 +11,88 @@ function calcularParidad(hammingCode, pos) {
     return paridad;
 }
 
-// Método para generar el código Hamming
-function generarCodigoHamming(datos) {
-    datos = datos.split('');
-    
-    // Calcular la cantidad de bits de paridad necesarios
-    let n = datos.length;
-    let m = 0;
-    while (Math.pow(2, m) < (n + m + 1)) {
-        m++;
+// Método para verificar y corregir el código Hamming
+function corregirHamming(hammingCode) {
+    let n = hammingCode.length;
+    let errorPos = 0;
+
+    for (let i = 0; (1 << i) <= n; i++) {
+        let paridadPos = (1 << i);
+        let paridad = calcularParidad(hammingCode, paridadPos);
+        if (paridad !== 0) {
+            errorPos += paridadPos;
+        }
     }
+
+    if (errorPos > 0) {
+        console.log("Error en el bit: " + errorPos);
+        let arr = hammingCode.split('');
+        arr[errorPos - 1] = (arr[errorPos - 1] === '0') ? '1' : '0';
+        hammingCode = arr.join('');
+    } else {
+        console.log("No se detectaron errores.");
+    }
+
+    return hammingCode;
+}
+
+// Función para decodificar el mensaje usando ASCII
+function decodificarMensaje(mensajeCodificado) {
+    let mensajeDecodificado = '';
     
-    // Inserta los bits de paridad
-    let hammingCode = new Array(n + m).fill('');
-    let j = 0;
-    for (let i = 1; i <= n + m; i++) {
-        if ((i & (i - 1)) === 0) {  // Si es una posición de bit de paridad
-            hammingCode[i - 1] = '0';
+    // Asegurarse de que el mensaje binario sea múltiplo de 8
+    while (mensajeCodificado.length % 8 !== 0) {
+        mensajeCodificado += '0';  // Rellenar con ceros al final
+    }
+
+    for (let i = 0; i < mensajeCodificado.length; i += 8) {
+        const byte = mensajeCodificado.substring(i, i + 8); 
+        const charCode = parseInt(byte, 2);  
+        mensajeDecodificado += String.fromCharCode(charCode); 
+    }
+    return mensajeDecodificado;
+}
+
+// Configurar servidor para recibir mensajes
+const server = net.createServer((socket) => {
+    console.log("Conexión establecida. Esperando mensaje...");
+
+    socket.on('data', (data) => {
+        const mensajeConRuido = data.toString();  // Asegurarse de recibir el mensaje correctamente como binario
+        console.log("Mensaje recibido (con ruido):", mensajeConRuido);
+
+        // Corregir errores en el mensaje recibido
+        const mensajeCorregido = corregirHamming(mensajeConRuido);
+        console.log("Mensaje recibido (con errores corregidos):", mensajeCorregido);
+
+        // Decodificar el mensaje
+        const mensajeDecodificado = decodificarMensaje(mensajeCorregido);
+        console.log("Mensaje decodificado:", mensajeDecodificado);
+
+        // Asegúrate de que la respuesta se envíe solo después de que el mensaje haya sido decodificado
+        if (socket.writable) {
+            socket.write(mensajeDecodificado, () => {
+                console.log("Mensaje corregido y enviado de vuelta al emisor");
+            });
         } else {
-            hammingCode[i - 1] = datos[j++];
+            console.error("Error: Socket no está escribible");
         }
-    }
-    
-    // Asignar los valores a los bits de paridad
-    for (let i = 0; i < m; i++) {
-        let paridadPos = Math.pow(2, i);
-        let paridadBit = calcularParidad(hammingCode.join(''), paridadPos);  // Cambié aquí para que sea una cadena
-        hammingCode[paridadPos - 1] = paridadBit;
-    }
+    });
 
-    return hammingCode.join('');  // Devolvemos como una cadena
-}
+    socket.on('end', () => {
+        console.log('Conexión cerrada');
+    });
 
-// Método para verificar y corregir el código Hamming
-function corregirHamming(hammingCode) {
-    let n = hammingCode.length;
-    let errorPos = 0;
+    socket.on('error', (err) => {
+        console.error("Error en el socket:", err.message);
+    });
 
-    // Verifica los bits de paridad
-    for (let i = 0; (1 << i) <= n; i++) {
-        let paridadPos = (1 << i);
-        let paridad = calcularParidad(hammingCode, paridadPos);
-        if (paridad !== 0) {
-            errorPos += paridadPos;  // Si hay un error, se calcula la posición
-        }
-    }
-
-    // Si se detecta un error, corregir el bit erróneo
-    if (errorPos > 0) {
-        console.log("Error en el bit: " + errorPos);
-        let arr = hammingCode.split('');  // Convertimos la cadena en un arreglo para modificar un carácter
-        arr[errorPos - 1] = (arr[errorPos - 1] === '0') ? '1' : '0';  // Corregimos el bit
-        hammingCode = arr.join('');  // Convertimos el arreglo nuevamente en una cadena
-    } else {
-        console.log("No se detectaron errores.");
-    }
-
-    return hammingCode;
-}
-
-// Método para verificar y corregir el código Hamming
-function corregirHamming(hammingCode) {
-    let n = hammingCode.length;
-    let errorPos = 0;
-
-    // Verifica los bits de paridad
-    for (let i = 0; (1 << i) <= n; i++) {
-        let paridadPos = (1 << i);
-        let paridad = calcularParidad(hammingCode, paridadPos);
-        if (paridad !== 0) {
-            errorPos += paridadPos;  // Si hay un error, se calcula la posición
-        }
-    }
-
-    // Si se detecta un error, corregir el bit erróneo
-    if (errorPos > 0) {
-        console.log("Error en el bit: " + errorPos);
-        let arr = hammingCode.split('');  // Convertimos la cadena en un arreglo para modificar un carácter
-        arr[errorPos - 1] = (arr[errorPos - 1] === '0') ? '1' : '0';  // Corregimos el bit
-        hammingCode = arr.join('');  // Convertimos el arreglo nuevamente en una cadena
-    } else {
-        console.log("No se detectaron errores.");
-    }
-
-    return hammingCode;
-}
-
-// Función para modificar al menos dos bits del mensaje
-function modificarBits(mensaje, numErrores) {
-    let mensajeModificado = mensaje.split('');
-    
-    for (let i = 0; i < numErrores; i++) {
-        const randomIndex = Math.floor(Math.random() * mensajeModificado.length); // Generar un índice aleatorio
-        mensajeModificado[randomIndex] = (mensajeModificado[randomIndex] === '0') ? '1' : '0';  // Cambiar el bit
-    }
-
-    return mensajeModificado.join('');
-}
-
-// Función para verificar si el mensaje tiene errores y corregirlo
-function verificarYCorregir(mensajeConError) {
-    // Verifica y corrige errores utilizando el código Hamming actual
-    let mensajeCorregido = corregirHamming(mensajeConError);
-    
-    // Si el mensaje corregido es igual al mensaje original, entonces no hubo error
-    return mensajeCorregido;
-}
-
-// Pruebas con mensajes de diferentes longitudes
-const mensajes = ["101010", "11011011", "1111001001"];
-mensajes.forEach(mensaje => {
-    // Emisor genera el código Hamming
-    const codigo_hamming = generarCodigoHamming(mensaje);
-    console.log("Código Hamming generado: ", codigo_hamming);
-
-    // Modificar dos bits del código para simular errores
-    let codigo_con_error = modificarBits(codigo_hamming, 2);  // Introducimos 2 errores
-    console.log("Código con errores: ", codigo_con_error);
-
-    // Receptor recibe el código Hamming con error y lo corrige
-    const codigo_recibido = verificarYCorregir(codigo_con_error);
-    console.log("Código recibido (con errores corregidos): ", codigo_recibido);
-
-    // Comprobamos que el código recibido después de la corrección sea igual al código original
-    if (codigo_recibido === codigo_hamming) {
-        console.log("El código ha sido corregido correctamente.");
-    } else {
-        console.log("Se ha detectado un error, el mensaje se descarta.");
-    }
+    socket.on('close', () => {
+        console.log('Conexión cerrada (por el servidor o cliente)');
+    });
 });
 
-// Ejemplo de uso
-let hammingCode = "1011011001";  // Suponiendo que esta es la entrada con el código Hamming recibido
-let codigoCorregido = corregirHamming(hammingCode);
-console.log("Código corregido: " + codigoCorregido);
-
-module.exports = { 
-    generarCodigoHamming, 
-    corregirHamming, 
-    modificarBits, 
-    verificarYCorregir 
-};
+// Iniciar servidor
+server.listen(12345, () => {
+    console.log("Servidor escuchando en puerto 12345...");
+});
