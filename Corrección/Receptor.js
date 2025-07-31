@@ -39,17 +39,35 @@ function corregirHamming(hammingCode) {
 // Función para decodificar el mensaje usando ASCII
 function decodificarMensaje(mensajeCodificado) {
     let mensajeDecodificado = '';
-    
+
     // Asegurarse de que el mensaje binario sea múltiplo de 8
     while (mensajeCodificado.length % 8 !== 0) {
         mensajeCodificado += '0';  // Rellenar con ceros al final
     }
 
-    for (let i = 0; i < mensajeCodificado.length; i += 8) {
-        const byte = mensajeCodificado.substring(i, i + 8); 
+    // Eliminar los bits de paridad (ubicados en las posiciones de 1, 2, 4, 8, ...)
+    let mensajeSinParidad = '';
+    let i = 0;
+
+    // Eliminar los bits de paridad en las posiciones 1, 2, 4, 8, ...
+    while (i < mensajeCodificado.length) {
+        // Si la posición es una potencia de 2, es un bit de paridad
+        if (Math.pow(2, Math.floor(Math.log2(i + 1))) === (i + 1)) {
+            i++;
+            continue;
+        }
+
+        mensajeSinParidad += mensajeCodificado.charAt(i);
+        i++;
+    }
+
+    // Decodificar los 8 bits en caracteres ASCII
+    for (let i = 0; i < mensajeSinParidad.length; i += 8) {
+        const byte = mensajeSinParidad.substring(i, i + 8); 
         const charCode = parseInt(byte, 2);  
         mensajeDecodificado += String.fromCharCode(charCode); 
     }
+
     return mensajeDecodificado;
 }
 
