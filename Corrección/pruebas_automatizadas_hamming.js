@@ -1,3 +1,4 @@
+const fs = require('fs');
 const net = require('net');
 
 // Función para generar las pruebas
@@ -10,19 +11,23 @@ function pruebasAutomatizadas() {
         "Codigo"
     ];
 
+    // Crear o vaciar los archivos de resultados
+    fs.writeFileSync('resultados10k.txt', '');
+    fs.writeFileSync('resultados20k.txt', '');
+
     // Realizar las pruebas
     mensajesPrueba.forEach(mensaje => {
         // 1. Generar prueba sin error
         const mensajeBinario = convertirAMensajeBinario(mensaje);
         console.log(`\nProbando con mensaje sin error: "${mensaje}"`);
         console.log("Mensaje binario:", mensajeBinario);
-        enviarMensaje(mensajeBinario, false); // Sin error
+        enviarMensaje(mensajeBinario, false, mensaje); // Sin error
 
         // 2. Generar prueba con error (introducimos un error en 1 bit)
         const mensajeConError = introducirError(mensajeBinario);
         console.log(`\nProbando con mensaje con error: "${mensaje}"`);
         console.log("Mensaje binario con error:", mensajeConError);
-        enviarMensaje(mensajeConError, true); // Con error
+        enviarMensaje(mensajeConError, true, mensaje); // Con error
     });
 }
 
@@ -40,7 +45,7 @@ function introducirError(mensajeBinario) {
 }
 
 // Función para enviar el mensaje al servidor
-function enviarMensaje(mensajeCodificado, conError) {
+function enviarMensaje(mensajeCodificado, conError, mensajeOriginal) {
     // Crear una nueva conexión al servidor
     const clientSocket = net.createConnection({ host: 'localhost', port: 12345 }, () => {
         console.log("Enviando mensaje codificado:", mensajeCodificado);
@@ -51,7 +56,19 @@ function enviarMensaje(mensajeCodificado, conError) {
 
     // Recibir respuesta del servidor (mensaje decodificado)
     clientSocket.on('data', (data) => {
-        console.log("Mensaje decodificado recibido:", data.toString());
+        const mensajeDecodificado = data.toString();
+        console.log("Mensaje decodificado recibido:", mensajeDecodificado);
+        // Guardar los resultados
+        const mensajeResultado = (mensajeDecodificado === mensajeOriginal) ? "mensaje correcto" : "mensaje con error";
+        
+        // Determinar el archivo de resultados
+        const tamanoMensaje = mensajeCodificado.length;
+        const archivo = tamanoMensaje > 10000 ? 'resultados20k.txt' : 'resultados10k.txt';
+
+        // Escribir el resultado en el archivo correspondiente
+        const resultado = `${tamanoMensaje}, ${conError ? 0.01 : 0.0}, ${mensajeResultado}\n`;
+        fs.appendFileSync(archivo, resultado);
+
         clientSocket.end();
     });
 
