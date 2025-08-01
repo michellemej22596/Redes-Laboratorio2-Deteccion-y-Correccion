@@ -1,90 +1,99 @@
 import random
-import matplotlib.pyplot as plt
-import numpy as np
-import subprocess
-import time
+import socket
+from crc32 import crc32_emisor  # Usando CRC-32 desde crc32.py
 
-# Función de CRC32 ya definida en crc32.py (emisor.py)
-from crc32 import crc32_emisor
+# Capa de Aplicación: Solicitar mensaje y algoritmo
+def solicitar_mensaje():
+    mensaje = input("Ingrese el mensaje a enviar: ")
+    return mensaje
 
-# Función para simular el ruido (errores)
-def aplicar_ruido(mensaje, probabilidad_error):
-    """Simula ruido en el mensaje alterando bits con una probabilidad dada"""
-    mensaje_binario = ''.join(format(ord(c), '08b') for c in mensaje)  # Convertir mensaje a binario
-    mensaje_ruido = list(mensaje_binario)
-    
-    for i in range(len(mensaje_ruido)):
-        if random.random() < probabilidad_error:
-            # Invertir el bit para simular el error
-            mensaje_ruido[i] = '0' if mensaje_binario[i] == '1' else '1'
-    
-    return ''.join(mensaje_ruido)
+def solicitar_algoritmo():
+    algoritmo = input("Seleccione el algoritmo (crc32/hamming): ").lower()
+    return algoritmo
 
-# Función para realizar la prueba
-def realizar_prueba(tamano_mensaje, probabilidad_error, aplicar_ruido_al_mensaje=True):
-    """Realiza una prueba de transmisión, error y corrección con CRC32"""
-    mensaje = ''.join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", k=tamano_mensaje))
-    
-    # Solo aplicar ruido en un porcentaje pequeño de las pruebas
-    if aplicar_ruido_al_mensaje:
-        mensaje_con_ruido = aplicar_ruido(mensaje, probabilidad_error)  # Aplicamos el ruido
+def aplicar_ruido_opcional():
+    respuesta = input("¿Desea aplicar ruido al mensaje? (s/n): ").lower()
+    return respuesta == 's'
+
+# Capa de Presentación: Codificar mensaje a binario ASCII
+def codificar_mensaje(mensaje):
+    return ''.join(format(ord(c), '08b') for c in mensaje)
+
+# Capa de Enlace: Calcular CRC o Hamming
+def calcular_integridad(mensaje, algoritmo):
+    if algoritmo == "crc32":
+        return crc32_emisor(mensaje)  # CRC-32
     else:
-        mensaje_con_ruido = mensaje  # Sin aplicar ruido
+        return "Algoritmo no soportado"  # Placeholder para Hamming
 
-    # Calcular el CRC del mensaje original (emisor)
-    crc_original = crc32_emisor(mensaje)
-    
-    # Simular la recepción del mensaje con el CRC (en JavaScript)
+# Capa de Ruido: Introducir error en el mensaje
+def aplicar_ruido(mensaje_binario, probabilidad=0.01):
+    mensaje_ruidoso = list(mensaje_binario)
+    for i in range(len(mensaje_binario)):
+        if random.random() < probabilidad:  # Probabilidad de aplicar el error
+            mensaje_ruidoso[i] = '1' if mensaje_binario[i] == '0' else '0'
+    return ''.join(mensaje_ruidoso)
+
+# Función para introducir errores en el CRC (para pruebas)
+def introducir_error_crc(crc, num_errores=1):
+    crc_list = list(crc)
+    indices = random.sample(range(len(crc)), min(num_errores, len(crc)))
+    for i in indices:
+        crc_list[i] = '1' if crc_list[i] == '0' else '0'
+    return ''.join(crc_list)
+
+# Función principal: Transmitir el mensaje
+def emisor():
+    mensaje = solicitar_mensaje()
+    algoritmo = solicitar_algoritmo()
+
+    # Codificar mensaje
+    mensaje_binario = codificar_mensaje(mensaje)
+
+    # Calcular CRC o Hamming
+    crc_calculado = calcular_integridad(mensaje, algoritmo)
+
+    # Preguntar si se debe aplicar ruido
+    if aplicar_ruido_opcional():
+        # Si elige "sí", se aplica el ruido al CRC
+        crc_con_ruido = introducir_error_crc(crc_calculado)
+        print("Ruido aplicado al CRC.")
+    else:
+        # Si elige "no", se envía el CRC sin ruido
+        crc_con_ruido = crc_calculado
+        print("No se aplicó ruido al CRC.")
+
+    # Imprimir resultados
+    print(f"Mensaje original: {mensaje}")
+    print(f"Mensaje codificado en binario: {mensaje_binario}")
+    print(f"CRC-32 calculado (binario): {crc_calculado}")
+    print(f"CRC-32 enviado (binario): {crc_con_ruido}")
+
+    # Establecer conexión con el receptor y enviar el mensaje con el CRC
     try:
-        result = subprocess.run(
-            ['node', 'receptor.js', mensaje_con_ruido, crc_original],
-            capture_output=True, text=True, timeout=10  # Timeout de 10 segundos
-        )
-        
-        # Analizar el resultado
-        if "La integridad del mensaje es válida." in result.stdout:
-            return True  # Mensaje sin errores
-        else:
-            return False  # Mensaje con errores
-    except subprocess.TimeoutExpired:
-        print("El proceso ha superado el tiempo de espera")
-        return False
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect(("127.0.0.1", 65432))  # Conectamos al receptor
+            mensaje_con_crc = f"{mensaje}::{crc_con_ruido}"  # Formato: mensaje::CRC
+            s.sendall(mensaje_con_crc.encode())  # Enviar mensaje y CRC
+            data = s.recv(1024)
+            print(f"Respuesta del receptor: {data.decode()}")
+    except ConnectionRefusedError:
+        print("Error: No se pudo conectar al receptor. Asegúrate de que esté ejecutándose.")
+    except Exception as e:
+        print(f"Error en la transmisión: {e}")
 
-# Realizar múltiples pruebas y almacenar los resultados
-def realizar_pruebas(cant_pruebas, tamano_mensaje, probabilidad_error, porcentaje_con_ruido=0.1):
-    exitosos = 0
-    fallidos = 0
+# Función para pruebas automatizadas
+def emisor_automatizado(mensaje, introducir_error=False):
+    """Versión automatizada del emisor para pruebas"""
+    crc_calculado = crc32_emisor(mensaje)
     
-    for _ in range(cant_pruebas):
-        # Decidir aleatoriamente si aplicar ruido (según el porcentaje dado)
-        aplicar_ruido_al_mensaje = random.random() < porcentaje_con_ruido
-        
-        if realizar_prueba(tamano_mensaje, probabilidad_error, aplicar_ruido_al_mensaje):
-            exitosos += 1
-        else:
-            fallidos += 1
+    if introducir_error:
+        crc_enviado = introducir_error_crc(crc_calculado)
+    else:
+        crc_enviado = crc_calculado
     
-    return exitosos, fallidos
+    return mensaje, crc_enviado
 
-# Generar las gráficas con los resultados
-def generar_grafica(resultados, tamano_mensaje, probabilidad_error):
-    exitosos, fallidos = resultados
-    total = exitosos + fallidos
-    
-    # Graficar los resultados
-    plt.bar(['Exitosos', 'Fallidos'], [exitosos, fallidos], color=['green', 'red'])
-    plt.title(f"Resultados de {tamano_mensaje} caracteres, Probabilidad de Error: {probabilidad_error}")
-    plt.ylabel("Cantidad de mensajes")
-    plt.show()
-
-# Configuración de la prueba
-cant_pruebas = 10000
-tamano_mensaje = 50  # Tamaño del mensaje (puedes ajustarlo)
-probabilidad_error = 0.001  # Probabilidad de error (0.1%)
-porcentaje_con_ruido = 0.1  # Solo aplicar ruido en el 10% de las pruebas
-
-# Realizar las pruebas
-resultados = realizar_pruebas(cant_pruebas, tamano_mensaje, probabilidad_error, porcentaje_con_ruido)
-
-# Generar la gráfica
-generar_grafica(resultados, tamano_mensaje, probabilidad_error)
+# Ejecutar el emisor
+if __name__ == "__main__":
+    emisor()
