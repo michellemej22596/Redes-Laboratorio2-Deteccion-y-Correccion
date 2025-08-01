@@ -1,44 +1,47 @@
 import matplotlib.pyplot as plt
-import numpy as np
 
-# Leer los resultados de las pruebas
-resultados = []
-with open('resultados.txt', 'r', encoding='utf-8') as file:
+# Leer los resultados de las pruebas para 10k
+resultados_10k = []
+with open('resultados10k.txt', 'r', encoding='utf-8') as file:
     for line in file:
         if line.strip():  # Para evitar líneas vacías
             partes = line.strip().split(', ')
             if len(partes) == 3:  # Debemos tener tamaño, error, mensaje
                 tamano, error, mensaje = partes
-                resultados.append((int(tamano), float(error), mensaje))  # Almacenar como tupla
+                resultados_10k.append((int(tamano), float(error), mensaje))  # Almacenar como tupla
 
-# Agrupar los resultados por tamaño de mensaje y probabilidad de error
-tamanos = list(set([r[0] for r in resultados]))
-errores = list(set([r[1] for r in resultados]))
+# Leer los resultados de las pruebas para 20k
+resultados_20k = []
+with open('resultados20k.txt', 'r', encoding='utf-8') as file:
+    for line in file:
+        if line.strip():  # Para evitar líneas vacías
+            partes = line.strip().split(', ')
+            if len(partes) == 3:  # Debemos tener tamaño, error, mensaje
+                tamano, error, mensaje = partes
+                resultados_20k.append((int(tamano), float(error), mensaje))  # Almacenar como tupla
 
-# Inicializar listas para correctos y errores
-correctos_por_error = []
-errores_por_error = []
+# Función para contar mensajes correctos e incorrectos
+def contar_mensajes(resultados):
+    correctos = sum(1 for r in resultados if r[1] == 0.0 and 'correcto' in r[2])
+    incorrectos = sum(1 for r in resultados if r[1] == 0.01 and 'error' in r[2])
+    return correctos, incorrectos
 
-# Agrupar los mensajes correctos y con error por probabilidad de error
-for error in errores:
-    correctos = sum(1 for r in resultados if r[1] == error and 'correcto' in r[2])
-    errores_ = sum(1 for r in resultados if r[1] == error and 'error' in r[2])
-    correctos_por_error.append(correctos)
-    errores_por_error.append(errores_)
+# Contar mensajes para 10k y 20k
+correctos_10k, incorrectos_10k = contar_mensajes(resultados_10k)
+correctos_20k, incorrectos_20k = contar_mensajes(resultados_20k)
 
-# Crear la gráfica de barras
-width = 0.35  # Ancho de las barras
-x = np.arange(len(errores))  # Ubicación de las barras
+# Crear la gráfica de barras para 10k
+fig, ax = plt.subplots(1, 2, figsize=(12, 6))
 
-fig, ax = plt.subplots(figsize=(10, 6))
-ax.bar(x - width / 2, correctos_por_error, width, label='Correctos')
-ax.bar(x + width / 2, errores_por_error, width, label='Errores')
+# 10k
+ax[0].bar(['Correctos', 'Incorrectos'], [correctos_10k, incorrectos_10k], color=['blue', 'orange'])
+ax[0].set_title('Mensajes correctos e incorrectos (10k)')
+ax[0].set_ylabel('Cantidad de mensajes')
 
-ax.set_xlabel('Probabilidad de error')
-ax.set_ylabel('Cantidad de mensajes')
-ax.set_title('Mensajes correctos y con error por probabilidad de error')
-ax.set_xticks(x)
-ax.set_xticklabels(errores)
-ax.legend()
+# 20k
+ax[1].bar(['Correctos', 'Incorrectos'], [correctos_20k, incorrectos_20k], color=['blue', 'orange'])
+ax[1].set_title('Mensajes correctos e incorrectos (20k)')
+ax[1].set_ylabel('Cantidad de mensajes')
 
+plt.tight_layout()
 plt.show()
