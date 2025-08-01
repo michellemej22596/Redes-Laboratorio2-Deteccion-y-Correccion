@@ -1,4 +1,3 @@
-// receptor.js
 const net = require('net');  // Requiere el módulo net para usar sockets
 const { crc32_receptor } = require('./crc32');  // Importa la función para calcular CRC-32
 
@@ -19,8 +18,10 @@ const server = net.createServer((socket) => {
 
         console.log(`Mensaje recibido: ${mensaje}`);
         console.log(`CRC recibido: ${crcRecibido}`);
-         // Calculamos el CRC del mensaje recibido
+        
+        // Calculamos el CRC del mensaje recibido
         const crcCalculado = crc32_receptor(mensaje);
+        console.log(`CRC calculado: ${crcCalculado}`);
 
         // Verificamos si el CRC calculado coincide con el CRC recibido
         if (crcCalculado === crcRecibido) {

@@ -21,13 +21,14 @@ def aplicar_ruido(mensaje, probabilidad_error):
     return ''.join(mensaje_ruido)
 
 # Función para realizar la prueba
-def realizar_prueba(tamano_mensaje, probabilidad_error, aplicar_ruido_al_mensaje=True):
+def realizar_prueba(tamano_mensaje, probabilidad_error):
     """Realiza una prueba de transmisión, error y corrección con CRC32"""
     mensaje = ''.join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", k=tamano_mensaje))
     
-    # Solo aplicar ruido en un porcentaje pequeño de las pruebas
+    # Aplicar ruido al mensaje en un pequeño porcentaje de las pruebas
+    aplicar_ruido_al_mensaje = random.random() < 0.01  # Solo el 1% de los mensajes tendrán ruido
     if aplicar_ruido_al_mensaje:
-        mensaje_con_ruido = aplicar_ruido(mensaje, probabilidad_error)  # Aplicamos el ruido
+        mensaje_con_ruido = aplicar_ruido(mensaje, probabilidad_error)
     else:
         mensaje_con_ruido = mensaje  # Sin aplicar ruido
 
@@ -51,15 +52,12 @@ def realizar_prueba(tamano_mensaje, probabilidad_error, aplicar_ruido_al_mensaje
         return False
 
 # Realizar múltiples pruebas y almacenar los resultados
-def realizar_pruebas(cant_pruebas, tamano_mensaje, probabilidad_error, porcentaje_con_ruido=0.1):
+def realizar_pruebas(cant_pruebas, tamano_mensaje, probabilidad_error):
     exitosos = 0
     fallidos = 0
     
     for _ in range(cant_pruebas):
-        # Decidir aleatoriamente si aplicar ruido (según el porcentaje dado)
-        aplicar_ruido_al_mensaje = random.random() < porcentaje_con_ruido
-        
-        if realizar_prueba(tamano_mensaje, probabilidad_error, aplicar_ruido_al_mensaje):
+        if realizar_prueba(tamano_mensaje, probabilidad_error):
             exitosos += 1
         else:
             fallidos += 1
@@ -78,13 +76,12 @@ def generar_grafica(resultados, tamano_mensaje, probabilidad_error):
     plt.show()
 
 # Configuración de la prueba
-cant_pruebas = 10000
+cant_pruebas = 100
 tamano_mensaje = 50  # Tamaño del mensaje (puedes ajustarlo)
 probabilidad_error = 0.001  # Probabilidad de error (0.1%)
-porcentaje_con_ruido = 0.1  # Solo aplicar ruido en el 10% de las pruebas
 
 # Realizar las pruebas
-resultados = realizar_pruebas(cant_pruebas, tamano_mensaje, probabilidad_error, porcentaje_con_ruido)
+resultados = realizar_pruebas(cant_pruebas, tamano_mensaje, probabilidad_error)
 
 # Generar la gráfica
 generar_grafica(resultados, tamano_mensaje, probabilidad_error)
